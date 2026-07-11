@@ -2,7 +2,7 @@
 #include "server.h"
 
 int main() {
-    Server server(8000);
+    Server server(8080);
 
     if(!server.start()){
         return 1;

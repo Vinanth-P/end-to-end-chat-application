@@ -39,17 +39,39 @@ bool Server::start(){
     }
 
     cout<<"Bind successful"<<endl;
-    
+
+    if(listen(serverSocket,10)<0){
+        cout<<"Listen failed"<<endl;
+        close(serverSocket);
+        return false;
+    }
+
+    cout<<"Server is listening on port "<<port<<endl;
+
     return true;
 }
 
 void Server::run(){
-    // minimal run loop placeholder
+    cout<<"Waiting for clients..."<<endl;
+
+    while(true){
+        sockaddr_in clientAddress;
+        socklen_t clientSize=sizeof(clientAddress);
+
+        int clientScoket=accept(serverSocket,(sockaddr*)&clientAddress,&clientSize);
+
+        if(clientScoket<0){
+            cout<<"Failed to accept client"<<endl;
+            continue;
+        }
+        cout<<"Client connected!"<<endl;
+        close(clientScoket);
+    }
 }
 
 void Server::stop(){
     if(serverSocket!=-1){
         close(serverSocket);
-        serverSocket=-1;
+        cout<<"Server stopped"<<endl;
     }
 }
