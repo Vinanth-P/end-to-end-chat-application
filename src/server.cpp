@@ -21,6 +21,16 @@ bool Server::start(){
 
     cout<<"Socket created successfully"<<endl;
 
+    int opt = 1;
+
+    if (setsockopt(serverSocket,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt)) < 0){
+    cout << "Failed to set socket options\n";
+
+    close(serverSocket);
+
+    return false;
+    }
+
     sockaddr_in serverAddress;
 
     memset(&serverAddress,0,sizeof(serverAddress));
