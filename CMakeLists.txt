@@ -9,6 +9,7 @@ include_directories(include)
 
 add_executable(server
     src/main.cpp
+    src/server.cpp
 )
 
 target_compile_options(server PRIVATE

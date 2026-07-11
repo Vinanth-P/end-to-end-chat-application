@@ -1,6 +1,13 @@
 #include <iostream>
+#include "server.h"
 
 int main() {
-    std::cout << "Chat server starting...\n";
+    Server server(8000);
+
+    if(!server.start()){
+        return 1;
+    }
+    server.run();
+    server.stop();
     return 0;
 }
