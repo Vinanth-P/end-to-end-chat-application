@@ -68,29 +68,51 @@ void Server::run(){
         sockaddr_in clientAddress;
         socklen_t clientSize=sizeof(clientAddress);
 
-        int clientScoket=accept(serverSocket,(sockaddr*)&clientAddress,&clientSize);
+        int clientSocket=accept(serverSocket,(sockaddr*)&clientAddress,&clientSize);
 
-        if(clientScoket<0){
+        if(clientSocket<0){
             cout<<"Failed to accept client"<<endl;
             continue;
         }
         cout<<"Client connected!"<<endl;
         
-        string message="Welcome to the server";
+        handleClient(clientSocket);
+    }
+}
 
-        send(clientScoket,message.c_str(),message.length(),0);
+void Server::handleClient(int clientSocket)
+{
+    string message = "Welcome to the server";
 
+    send(clientSocket,message.c_str(),message.length(),0);
+
+    while(true)
+    {
         char buffer[1024];
+
         memset(buffer,0,sizeof(buffer));
 
-        int bytesReceived=recv(clientScoket,buffer,sizeof(buffer),0);
-        
-        if(bytesReceived>0){
-            cout<<"Client:"<<buffer<<endl;
+        int bytesReceived =
+            recv(clientSocket,buffer,sizeof(buffer),0);
+
+        if(bytesReceived == 0)
+        {
+            cout << "Client disconnected\n";
+            break;
         }
 
-        close(clientScoket);
+        if(bytesReceived < 0)
+        {
+            cout << "Receive failed\n";
+            break;
+        }
+
+        cout << "[Client] "
+             << buffer
+             << endl;
     }
+
+    close(clientSocket);
 }
 
 void Server::stop(){

@@ -15,6 +15,7 @@ public:
     bool start();
     void run();
     void stop();
+    void handleClient(int clientSocket);
 };
 
 #endif

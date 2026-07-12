@@ -26,11 +26,10 @@ bool Client::connectToServer(){
     serverAddress.sin_family=AF_INET;
     serverAddress.sin_port=htons(serverPort);
 
-    inet_pton(
-    AF_INET,
-    serverIp.c_str(),
-    &serverAddress.sin_addr
-    );
+    if(inet_pton(AF_INET,serverIp.c_str(),&serverAddress.sin_addr) <= 0){
+        cout << "Invalid IP Address\n";
+        return false;
+    }
 
     if(connect(clientSocket,(sockaddr*)&serverAddress,sizeof(serverAddress))<0){
         cout<<"Connection failed"<<endl;
@@ -51,11 +50,24 @@ void Client::run(){
     if(byteReceived>0){
         cout<<buffer<<endl;
     }
-    string message="Hello server!";
+    while(true){
+        string message;
 
-    send(clientSocket,message.c_str(),message.length(),0);
+        cout<<"Enter message: ";
+
+        getline(cin,message);
+
+        if(message=="exit"){
+            break;
+        }
+
+        send(clientSocket,message.c_str(),message.length(),0);
+    }
 }
 
 void Client::stop(){
-
+    if(clientSocket!=-1){
+        close(clientSocket);
+        cout<<"Disconnected from server"<<endl;
+    }
 }
