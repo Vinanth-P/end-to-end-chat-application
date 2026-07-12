@@ -80,6 +80,15 @@ void Server::run(){
 
         send(clientScoket,message.c_str(),message.length(),0);
 
+        char buffer[1024];
+        memset(buffer,0,sizeof(buffer));
+
+        int bytesReceived=recv(clientScoket,buffer,sizeof(buffer),0);
+        
+        if(bytesReceived>0){
+            cout<<"Client:"<<buffer<<endl;
+        }
+
         close(clientScoket);
     }
 }

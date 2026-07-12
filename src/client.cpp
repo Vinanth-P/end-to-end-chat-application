@@ -51,6 +51,9 @@ void Client::run(){
     if(byteReceived>0){
         cout<<buffer<<endl;
     }
+    string message="Hello server!";
+
+    send(clientSocket,message.c_str(),message.length(),0);
 }
 
 void Client::stop(){
