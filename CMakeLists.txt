@@ -8,8 +8,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(include)
 
 add_executable(server
-    src/main.cpp
     src/server.cpp
+    server/main.cpp
+)
+
+add_executable(client
+    client/main.cpp
+    src/client.cpp
 )
 
 target_compile_options(server PRIVATE
@@ -17,3 +22,4 @@ target_compile_options(server PRIVATE
     -Wextra
     -pedantic
 )
+

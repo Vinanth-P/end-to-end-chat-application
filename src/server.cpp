@@ -75,6 +75,11 @@ void Server::run(){
             continue;
         }
         cout<<"Client connected!"<<endl;
+        
+        string message="Welcome to the server";
+
+        send(clientScoket,message.c_str(),message.length(),0);
+
         close(clientScoket);
     }
 }
