@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <thread>
+#include <algorithm>
 using namespace std;
 
 //constructor
@@ -76,15 +78,39 @@ void Server::run(){
         }
         cout<<"Client connected!"<<endl;
         
-        handleClient(clientSocket);
+        // add client to list
+        lock_guard<mutex>lock(clientMux);
+        
+        clientSockets.push_back(clientSocket);
+        
+        thread clientThread(&Server::handleClient,this,clientSocket);
+        clientThread.detach();
     }
 }
 
 void Server::handleClient(int clientSocket)
 {
-    string message = "Welcome to the server";
+    // 1. Receive the username first
+    char nameBuffer[256];
+    memset(nameBuffer, 0, sizeof(nameBuffer));
+    int nameBytes = recv(clientSocket, nameBuffer, sizeof(nameBuffer), 0);
+    string username = "Unknown";
+    if (nameBytes > 0) {
+        username = string(nameBuffer, nameBytes);
+    }
 
-    send(clientSocket,message.c_str(),message.length(),0);
+    // 2. Safely store the username
+    {
+        lock_guard<mutex> lock(clientMux);
+        clientNames[clientSocket] = username;
+    }
+
+    cout << "User '" << username << "' joined the chat.\n";
+    string welcomeMessage = "Welcome to the server, " + username + "!";
+    send(clientSocket, welcomeMessage.c_str(), welcomeMessage.length(), 0);
+
+    // Broadcast that a new user joined
+    broadcast(clientSocket, "[" + username + "] has joined the chat.");
 
     while(true)
     {
@@ -107,17 +133,42 @@ void Server::handleClient(int clientSocket)
             break;
         }
 
-        cout << "[Client] "
-             << buffer
-             << endl;
+        string chatMessage = string(buffer, bytesReceived);
+        string formattedMessage = "[" + username + "]: " + chatMessage;
+
+        cout << formattedMessage << endl;
+        
+        broadcast(clientSocket, formattedMessage);
     }
 
     close(clientSocket);
-}
+
+    lock_guard<mutex>lock(clientMux);
+
+    // remove client from lists
+    clientNames.erase(clientSocket);
+    auto it=remove(clientSockets.begin(),clientSockets.end(),clientSocket);
+    clientSockets.erase(it,clientSockets.end());
+
+    // Tell everyone else they left
+    broadcast(clientSocket, "[" + username + "] has left the chat.");
+
+
+} 
 
 void Server::stop(){
     if(serverSocket!=-1){
         close(serverSocket);
         cout<<"Server stopped"<<endl;
+    }
+}
+
+void Server::broadcast(int senderFd,const string &msg){
+    lock_guard<mutex>lock(clientMux);
+
+    for(int fd:clientSockets){
+        if(fd==senderFd) continue;
+
+        send(fd,msg.c_str(),msg.size(),0);
     }
 }

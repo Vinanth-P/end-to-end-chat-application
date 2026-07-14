@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <thread>
 
 using namespace std;
 
@@ -42,19 +43,32 @@ bool Client::connectToServer(){
 
 
 void Client::run(){
-    char buffer[1024];
-    memset(buffer,0,sizeof(buffer));
+    string username;
+    cout << "Enter your username: ";
+    getline(cin, username);
+    
+    // Send username as the very first message
+    send(clientSocket, username.c_str(), username.length(), 0);
 
-    int byteReceived=recv(clientSocket,buffer,sizeof(buffer),0);
+    thread receiveThread([this]() {
+        while (true) {
+            char buffer[1024];
+            memset(buffer, 0, sizeof(buffer));
 
-    if(byteReceived>0){
-        cout<<buffer<<endl;
-    }
+            int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+            if (bytesReceived <= 0) {
+                cout << "\nDisconnected from server." << endl;
+                break;
+            }
+
+            cout << "\n" << buffer << "\nEnter message: " << flush;
+        }
+    });
+    receiveThread.detach();
+
     while(true){
         string message;
-
         cout<<"Enter message: ";
-
         getline(cin,message);
 
         if(message=="exit"){
