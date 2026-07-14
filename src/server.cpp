@@ -1,4 +1,5 @@
 #include "server.h"
+#include "../include/protocol.h"
 #include <cstring>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -91,12 +92,11 @@ void Server::run(){
 void Server::handleClient(int clientSocket)
 {
     // 1. Receive the username first
-    char nameBuffer[256];
-    memset(nameBuffer, 0, sizeof(nameBuffer));
-    int nameBytes = recv(clientSocket, nameBuffer, sizeof(nameBuffer), 0);
     string username = "Unknown";
-    if (nameBytes > 0) {
-        username = string(nameBuffer, nameBytes);
+    if (!receiveMessage(clientSocket, username) || username.empty()) {
+        cout << "Client disconnected before sending username\n";
+        close(clientSocket);
+        return;
     }
 
     // 2. Safely store the username
@@ -106,34 +106,19 @@ void Server::handleClient(int clientSocket)
     }
 
     cout << "User '" << username << "' joined the chat.\n";
-    string welcomeMessage = "Welcome to the server, " + username + "!";
-    send(clientSocket, welcomeMessage.c_str(), welcomeMessage.length(), 0);
+    string welcomeMessage = "----------------Welcome to the server, " + username + "!---------------";
+    sendMessage(clientSocket, welcomeMessage);
 
     // Broadcast that a new user joined
     broadcast(clientSocket, "[" + username + "] has joined the chat.");
 
     while(true)
     {
-        char buffer[1024];
-
-        memset(buffer,0,sizeof(buffer));
-
-        int bytesReceived =
-            recv(clientSocket,buffer,sizeof(buffer),0);
-
-        if(bytesReceived == 0)
-        {
-            cout << "Client disconnected\n";
+        string chatMessage;
+        if (!receiveMessage(clientSocket, chatMessage)) {
+            cout << username << " disconnected\n";
             break;
         }
-
-        if(bytesReceived < 0)
-        {
-            cout << "Receive failed\n";
-            break;
-        }
-
-        string chatMessage = string(buffer, bytesReceived);
         string formattedMessage = "[" + username + "]: " + chatMessage;
 
         cout << formattedMessage << endl;
@@ -143,15 +128,17 @@ void Server::handleClient(int clientSocket)
 
     close(clientSocket);
 
-    lock_guard<mutex>lock(clientMux);
+    {
+        lock_guard<mutex>lock(clientMux);
 
-    // remove client from lists
-    clientNames.erase(clientSocket);
-    auto it=remove(clientSockets.begin(),clientSockets.end(),clientSocket);
-    clientSockets.erase(it,clientSockets.end());
+        // remove client from lists
+        clientNames.erase(clientSocket);
+        auto it=remove(clientSockets.begin(),clientSockets.end(),clientSocket);
+        clientSockets.erase(it,clientSockets.end());
+    }
 
     // Tell everyone else they left
-    broadcast(clientSocket, "[" + username + "] has left the chat.");
+    broadcast(clientSocket, "[" + username + "] disconnected");
 
 
 } 
@@ -169,6 +156,6 @@ void Server::broadcast(int senderFd,const string &msg){
     for(int fd:clientSockets){
         if(fd==senderFd) continue;
 
-        send(fd,msg.c_str(),msg.size(),0);
+        sendMessage(fd, msg);
     }
 }

@@ -9,12 +9,14 @@ include_directories(include)
 
 add_executable(server
     src/server.cpp
+    src/protocol.cpp
     server/main.cpp
 )
 
 add_executable(client
     client/main.cpp
     src/client.cpp
+    src/protocol.cpp
 )
 
 target_compile_options(server PRIVATE

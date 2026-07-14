@@ -1,5 +1,6 @@
 #include "client.h"
-
+#include "../include/protocol.h"
+#include<mutex>
 #include <cstring>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -7,6 +8,9 @@
 #include <thread>
 
 using namespace std;
+
+mutex coutMutex;
+
 
 Client::Client(string ip,int port){
     serverIp=ip;
@@ -41,44 +45,51 @@ bool Client::connectToServer(){
     return true;
 }
 
-
 void Client::run(){
     string username;
-    cout << "Enter your username: ";
+    cout<<"Enter your username: ";
     getline(cin, username);
     
-    // Send username as the very first message
-    send(clientSocket, username.c_str(), username.length(), 0);
+    sendMessage(clientSocket, username);
 
     thread receiveThread([this]() {
         while (true) {
-            char buffer[1024];
-            memset(buffer, 0, sizeof(buffer));
-
-            int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
-            if (bytesReceived <= 0) {
-                cout << "\nDisconnected from server." << endl;
+            string receivedMsg;
+            if (!receiveMessage(clientSocket, receivedMsg)) {
+                // Lock console to print disconnection message safely
+                lock_guard<mutex> lock(coutMutex);
+                cout << "\033[2K\rDisconnected from server." << endl;
                 break;
             }
 
-            cout << "\n" << buffer << "\nEnter message: " << flush;
+            // Lock the console while updating the UI
+            {
+                lock_guard<mutex> lock(coutMutex);
+                // \033[2K clears the current line, \r moves cursor to beginning
+                cout << "\033[2K\r" << receivedMsg << "\n";
+                cout << "Enter message: " << flush;
+            }
         }
     });
     receiveThread.detach();
 
     while(true){
-        string message;
-        cout<<"Enter message: ";
-        getline(cin,message);
+        // Print the initial prompt safely
+        {
+            lock_guard<mutex> lock(coutMutex);
+            cout << "Enter message: " << flush;
+        }
 
-        if(message=="exit"){
+        string message;
+        getline(cin, message);
+
+        if(message == "exit"){
             break;
         }
 
-        send(clientSocket,message.c_str(),message.length(),0);
+        sendMessage(clientSocket, message);
     }
 }
-
 void Client::stop(){
     if(clientSocket!=-1){
         close(clientSocket);
